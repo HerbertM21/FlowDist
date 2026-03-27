@@ -206,40 +206,76 @@ export namespace main {
 	        this.nombre = source["nombre"];
 	    }
 	}
-	export class ExportRow {
-	    numero_cheque: string;
-	    rut_cliente: string;
-	    nombre_cliente: string;
-	    banco_cheque: string;
-	    numero_factura: string;
-	    condiciones_pago: string;
-	    observaciones: string;
-	    monto: number;
-	    fecha_recepcion: string;
-	    fecha_deposito: string;
-	    fecha_cheque_cobrar: string;
-	    estado: string;
-	    vendedor: string;
+	export class ExportResult {
+	    file_path: string;
 	
 	    static createFrom(source: any = {}) {
-	        return new ExportRow(source);
+	        return new ExportResult(source);
 	    }
 	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.numero_cheque = source["numero_cheque"];
-	        this.rut_cliente = source["rut_cliente"];
+	        this.file_path = source["file_path"];
+	    }
+	}
+	export class MovimientoCabinet {
+	    id: number;
+	    codigo_movimiento: string;
+	    nombre_cliente: string;
+	    direccion?: string;
+	    localidad?: string;
+	    cantidad_cabinets: number;
+	    descripcion?: string;
+	    fecha_entrada?: string;
+	    fecha_salida?: string;
+	    valor: number;
+	    created_at?: string;
+	    updated_at?: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new MovimientoCabinet(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.codigo_movimiento = source["codigo_movimiento"];
 	        this.nombre_cliente = source["nombre_cliente"];
-	        this.banco_cheque = source["banco_cheque"];
-	        this.numero_factura = source["numero_factura"];
-	        this.condiciones_pago = source["condiciones_pago"];
-	        this.observaciones = source["observaciones"];
-	        this.monto = source["monto"];
-	        this.fecha_recepcion = source["fecha_recepcion"];
-	        this.fecha_deposito = source["fecha_deposito"];
-	        this.fecha_cheque_cobrar = source["fecha_cheque_cobrar"];
-	        this.estado = source["estado"];
-	        this.vendedor = source["vendedor"];
+	        this.direccion = source["direccion"];
+	        this.localidad = source["localidad"];
+	        this.cantidad_cabinets = source["cantidad_cabinets"];
+	        this.descripcion = source["descripcion"];
+	        this.fecha_entrada = source["fecha_entrada"];
+	        this.fecha_salida = source["fecha_salida"];
+	        this.valor = source["valor"];
+	        this.created_at = source["created_at"];
+	        this.updated_at = source["updated_at"];
+	    }
+	}
+	export class MovimientoCabinetInput {
+	    nombre_cliente: string;
+	    direccion: string;
+	    localidad: string;
+	    cantidad_cabinets: number;
+	    descripcion: string;
+	    codigo_movimiento: string;
+	    fecha_entrada: string;
+	    fecha_salida: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new MovimientoCabinetInput(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.nombre_cliente = source["nombre_cliente"];
+	        this.direccion = source["direccion"];
+	        this.localidad = source["localidad"];
+	        this.cantidad_cabinets = source["cantidad_cabinets"];
+	        this.descripcion = source["descripcion"];
+	        this.codigo_movimiento = source["codigo_movimiento"];
+	        this.fecha_entrada = source["fecha_entrada"];
+	        this.fecha_salida = source["fecha_salida"];
 	    }
 	}
 	export class Vendedor {

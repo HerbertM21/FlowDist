@@ -7,11 +7,15 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
 	"github.com/jmoiron/sqlx"
 	"github.com/lib/pq"
+	wruntime "github.com/wailsapp/wails/v2/pkg/runtime"
+	"github.com/xuri/excelize/v2"
 )
 
 type App struct {
@@ -141,6 +145,36 @@ type ChequeDevueltoInput struct {
 	Motivo        string  `json:"motivo"`
 	FechaSaldada  string  `json:"fecha_saldada"`
 	Comentario    string  `json:"comentario"`
+}
+
+type MovimientoCabinet struct {
+	ID               int     `json:"id" db:"id"`
+	CodigoMovimiento string  `json:"codigo_movimiento" db:"codigo_movimiento"`
+	NombreCliente    string  `json:"nombre_cliente" db:"nombre_cliente"`
+	Direccion        *string `json:"direccion" db:"direccion"`
+	Localidad        *string `json:"localidad" db:"localidad"`
+	CantidadCabinets int     `json:"cantidad_cabinets" db:"cantidad_cabinets"`
+	Descripcion      *string `json:"descripcion" db:"descripcion"`
+	FechaEntrada     *string `json:"fecha_entrada" db:"fecha_entrada"`
+	FechaSalida      *string `json:"fecha_salida" db:"fecha_salida"`
+	Valor            int     `json:"valor" db:"valor"`
+	CreatedAt        *string `json:"created_at" db:"created_at"`
+	UpdatedAt        *string `json:"updated_at" db:"updated_at"`
+}
+
+type ExportResult struct {
+	FilePath string `json:"file_path"`
+}
+
+type MovimientoCabinetInput struct {
+	NombreCliente    string `json:"nombre_cliente"`
+	Direccion        string `json:"direccion"`
+	Localidad        string `json:"localidad"`
+	CantidadCabinets int    `json:"cantidad_cabinets"`
+	Descripcion      string `json:"descripcion"`
+	CodigoMovimiento string `json:"codigo_movimiento"`
+	FechaEntrada     string `json:"fecha_entrada"`
+	FechaSalida      string `json:"fecha_salida"`
 }
 
 func (a *App) GetClientes() ([]Cliente, error) {
@@ -443,24 +477,180 @@ func (a *App) SoftDeleteChequeDevuelto(id int) error {
 	return err
 }
 
-type ExportRow struct {
-	NumeroCheque      string  `json:"numero_cheque"`
-	RutCliente        string  `json:"rut_cliente"`
-	NombreCliente     string  `json:"nombre_cliente"`
-	BancoCheque       string  `json:"banco_cheque"`
-	NumeroFactura     string  `json:"numero_factura"`
-	CondicionesPago   string  `json:"condiciones_pago"`
-	Observaciones     string  `json:"observaciones"`
-	Monto             float64 `json:"monto"`
-	FechaRecepcion    string  `json:"fecha_recepcion"`
-	FechaDeposito     string  `json:"fecha_deposito"`
-	FechaChequeCobrar string  `json:"fecha_cheque_cobrar"`
-	Estado            string  `json:"estado"`
-	Vendedor          string  `json:"vendedor"`
+func (a *App) GetMovimientosCabinets() ([]MovimientoCabinet, error) {
+	var items []MovimientoCabinet
+	query := `
+		SELECT id,
+			codigo_movimiento,
+			nombre_cliente,
+			direccion,
+			localidad,
+			cantidad_cabinets,
+			descripcion,
+			TO_CHAR(fecha_entrada, 'YYYY-MM-DD') as fecha_entrada,
+			TO_CHAR(fecha_salida, 'YYYY-MM-DD') as fecha_salida,
+			COALESCE(valor, 1) as valor,
+			TO_CHAR(created_at, 'YYYY-MM-DD"T"HH24:MI:SS') as created_at,
+			TO_CHAR(updated_at, 'YYYY-MM-DD"T"HH24:MI:SS') as updated_at
+		FROM movimientos_cabinets
+		WHERE deleted_at IS NULL
+		ORDER BY created_at DESC, id DESC`
+	err := a.db.Select(&items, query)
+	return items, err
 }
 
-func (a *App) ExportCheques() ([]ExportRow, error) {
-	var rows []ExportRow
+func (a *App) CrearMovimientoCabinet(input MovimientoCabinetInput) error {
+	codigo := strings.TrimSpace(input.CodigoMovimiento)
+	if codigo == "" {
+		return fmt.Errorf("el codigo de movimiento es obligatorio")
+	}
+
+	nombreCliente := strings.TrimSpace(input.NombreCliente)
+	if nombreCliente == "" {
+		return fmt.Errorf("el nombre del cliente es obligatorio")
+	}
+
+	cantidad := input.CantidadCabinets
+	if cantidad <= 0 {
+		return fmt.Errorf("la cantidad de cabinets debe ser mayor a 0")
+	}
+
+	_, err := a.db.Exec(`
+		INSERT INTO movimientos_cabinets (
+			nombre_cliente,
+			direccion,
+			localidad,
+			cantidad_cabinets,
+			descripcion,
+			codigo_movimiento,
+			fecha_entrada,
+			fecha_salida,
+			valor
+		)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 1)`,
+		nombreCliente,
+		nilIfEmpty(input.Direccion),
+		nilIfEmpty(input.Localidad),
+		cantidad,
+		nilIfEmpty(input.Descripcion),
+		codigo,
+		nilIfEmpty(input.FechaEntrada),
+		nilIfEmpty(input.FechaSalida),
+	)
+
+	return err
+}
+
+func (a *App) UpdateMovimientoCabinet(codigoOriginal string, input MovimientoCabinetInput) error {
+	codigoOriginal = strings.TrimSpace(codigoOriginal)
+	if codigoOriginal == "" {
+		return fmt.Errorf("codigo de movimiento original invalido")
+	}
+
+	codigoNuevo := strings.TrimSpace(input.CodigoMovimiento)
+	if codigoNuevo == "" {
+		return fmt.Errorf("el codigo de movimiento es obligatorio")
+	}
+
+	nombreCliente := strings.TrimSpace(input.NombreCliente)
+	if nombreCliente == "" {
+		return fmt.Errorf("el nombre del cliente es obligatorio")
+	}
+
+	cantidad := input.CantidadCabinets
+	if cantidad <= 0 {
+		return fmt.Errorf("la cantidad de cabinets debe ser mayor a 0")
+	}
+
+	_, err := a.db.Exec(`
+		UPDATE movimientos_cabinets
+		SET
+			codigo_movimiento = $1,
+			nombre_cliente = $2,
+			direccion = $3,
+			localidad = $4,
+			cantidad_cabinets = $5,
+			descripcion = $6,
+			fecha_entrada = $7,
+			fecha_salida = $8,
+			valor = 1,
+			updated_at = NOW()
+		WHERE codigo_movimiento = $9
+			AND deleted_at IS NULL`,
+		codigoNuevo,
+		nombreCliente,
+		nilIfEmpty(input.Direccion),
+		nilIfEmpty(input.Localidad),
+		cantidad,
+		nilIfEmpty(input.Descripcion),
+		nilIfEmpty(input.FechaEntrada),
+		nilIfEmpty(input.FechaSalida),
+		codigoOriginal,
+	)
+
+	return err
+}
+
+func (a *App) SoftDeleteMovimientoCabinet(codigoMovimiento string) error {
+	codigoMovimiento = strings.TrimSpace(codigoMovimiento)
+	if codigoMovimiento == "" {
+		return fmt.Errorf("codigo de movimiento invalido")
+	}
+
+	_, err := a.db.Exec(`
+		UPDATE movimientos_cabinets
+		SET deleted_at = NOW(), updated_at = NOW()
+		WHERE codigo_movimiento = $1
+			AND deleted_at IS NULL`, codigoMovimiento)
+
+	return err
+}
+
+type exportChequeRow struct {
+	NumeroCheque      string  `db:"numero_cheque" json:"numero_cheque"`
+	RutCliente        string  `db:"rut_cliente" json:"rut_cliente"`
+	NombreCliente     string  `db:"nombre_cliente" json:"nombre_cliente"`
+	BancoCheque       string  `db:"banco_cheque" json:"banco_cheque"`
+	NumeroFactura     string  `db:"numero_factura" json:"numero_factura"`
+	CondicionesPago   string  `db:"condiciones_pago" json:"condiciones_pago"`
+	Observaciones     string  `db:"observaciones" json:"observaciones"`
+	Monto             float64 `db:"monto" json:"monto"`
+	FechaRecepcion    string  `db:"fecha_recepcion" json:"fecha_recepcion"`
+	FechaDeposito     string  `db:"fecha_deposito" json:"fecha_deposito"`
+	FechaChequeCobrar string  `db:"fecha_cheque_cobrar" json:"fecha_cheque_cobrar"`
+	Estado            string  `db:"estado" json:"estado"`
+	Vendedor          string  `db:"vendedor" json:"vendedor"`
+}
+
+type exportDevueltosRow struct {
+	NumeroCheque  string  `db:"numero_cheque" json:"numero_cheque"`
+	RutCliente    string  `db:"rut_cliente" json:"rut_cliente"`
+	NombreCliente string  `db:"nombre_cliente" json:"nombre_cliente"`
+	Plaza         string  `db:"plaza" json:"plaza"`
+	Monto         float64 `db:"monto" json:"monto"`
+	FechaRegistro string  `db:"fecha_registro" json:"fecha_registro"`
+	FechaCheque   string  `db:"fecha_cheque" json:"fecha_cheque"`
+	TipoPago      string  `db:"tipo_pago" json:"tipo_pago"`
+	Motivo        string  `db:"motivo" json:"motivo"`
+	FechaSaldada  string  `db:"fecha_saldada" json:"fecha_saldada"`
+	Comentario    string  `db:"comentario" json:"comentario"`
+	EstadoPago    string  `db:"estado_pago" json:"estado_pago"`
+}
+
+type exportCabinetsRow struct {
+	CodigoMovimiento string `db:"codigo_movimiento" json:"codigo_movimiento"`
+	NombreCliente    string `db:"nombre_cliente" json:"nombre_cliente"`
+	Direccion        string `db:"direccion" json:"direccion"`
+	Localidad        string `db:"localidad" json:"localidad"`
+	CantidadCabinets int    `db:"cantidad_cabinets" json:"cantidad_cabinets"`
+	Descripcion      string `db:"descripcion" json:"descripcion"`
+	FechaEntrada     string `db:"fecha_entrada" json:"fecha_entrada"`
+	FechaSalida      string `db:"fecha_salida" json:"fecha_salida"`
+	Valor            int    `db:"valor" json:"valor"`
+}
+
+func (a *App) queryExportChequesRows() ([]exportChequeRow, error) {
+	var rows []exportChequeRow
 	query := `
 		SELECT COALESCE(c.numero_cheque, '') as numero_cheque, c.rut_cliente,
 			cl.razon_social as nombre_cliente,
@@ -482,6 +672,422 @@ func (a *App) ExportCheques() ([]ExportRow, error) {
 		ORDER BY c.fecha_cheque_cobrar DESC NULLS LAST, c.id DESC`
 	err := a.db.Select(&rows, query)
 	return rows, err
+}
+
+func (a *App) queryExportChequesDevueltosRows() ([]exportDevueltosRow, error) {
+	var rows []exportDevueltosRow
+	query := `
+		SELECT
+			COALESCE(cd.numero_cheque, '') as numero_cheque,
+			cd.rut_cliente,
+			COALESCE(cl.razon_social, '') as nombre_cliente,
+			COALESCE(cd.plaza, cl.zona, '') as plaza,
+			cd.monto,
+			COALESCE(TO_CHAR(cd.fecha_registro, 'DD/MM/YYYY'), '') as fecha_registro,
+			COALESCE(TO_CHAR(cd.fecha_cheque, 'DD/MM/YYYY'), '') as fecha_cheque,
+			COALESCE(cd.tipo_pago, '') as tipo_pago,
+			COALESCE(cd.motivo, '') as motivo,
+			COALESCE(TO_CHAR(cd.fecha_saldada, 'DD/MM/YYYY'), '') as fecha_saldada,
+			COALESCE(cd.comentario, '') as comentario,
+			CASE WHEN cd.fecha_saldada IS NOT NULL AND COALESCE(cd.tipo_pago, '') <> '' THEN 'Pagado' ELSE 'Pendiente' END as estado_pago
+		FROM cheques_devueltos cd
+		LEFT JOIN clientes cl ON cd.rut_cliente = cl.rut
+		WHERE cd.deleted_at IS NULL
+		ORDER BY cd.created_at DESC, cd.id DESC`
+	err := a.db.Select(&rows, query)
+	return rows, err
+}
+
+func (a *App) queryExportCabinetsRows() ([]exportCabinetsRow, error) {
+	var rows []exportCabinetsRow
+	query := `
+		SELECT
+			codigo_movimiento,
+			nombre_cliente,
+			COALESCE(direccion, '') as direccion,
+			COALESCE(localidad, '') as localidad,
+			cantidad_cabinets,
+			COALESCE(descripcion, '') as descripcion,
+			COALESCE(TO_CHAR(fecha_entrada, 'DD/MM/YYYY'), '') as fecha_entrada,
+			COALESCE(TO_CHAR(fecha_salida, 'DD/MM/YYYY'), '') as fecha_salida,
+			1 as valor
+		FROM movimientos_cabinets
+		WHERE deleted_at IS NULL
+		ORDER BY created_at DESC, codigo_movimiento DESC`
+	err := a.db.Select(&rows, query)
+	return rows, err
+}
+
+func (a *App) ExportChequesExcel() (*ExportResult, error) {
+	cheques, err := a.queryExportChequesRows()
+	if err != nil {
+		return nil, fmt.Errorf("no se pudo consultar cheques para exportar: %w", err)
+	}
+
+	devueltos, err := a.queryExportChequesDevueltosRows()
+	if err != nil {
+		return nil, fmt.Errorf("no se pudo consultar cheques devueltos para exportar: %w", err)
+	}
+
+	if a.ctx == nil {
+		return nil, fmt.Errorf("contexto de app no disponible")
+	}
+
+	filePath, err := wruntime.SaveFileDialog(a.ctx, wruntime.SaveDialogOptions{
+		Title:           "Exportar Cheques a Excel",
+		DefaultFilename: fmt.Sprintf("cheques_%s.xlsx", time.Now().Format("20060102_150405")),
+		Filters: []wruntime.FileFilter{
+			{DisplayName: "Excel Workbook (*.xlsx)", Pattern: "*.xlsx"},
+		},
+	})
+	if err != nil {
+		return nil, err
+	}
+	if strings.TrimSpace(filePath) == "" {
+		return nil, nil
+	}
+
+	if err := ensureXLSXExtension(&filePath); err != nil {
+		return nil, fmt.Errorf("ruta de exportacion invalida: %w", err)
+	}
+
+	f, err := buildChequesWorkbook(cheques, devueltos)
+	if err != nil {
+		return nil, err
+	}
+	defer func() {
+		_ = f.Close()
+	}()
+	if err := f.SaveAs(filePath); err != nil {
+		return nil, fmt.Errorf("no se pudo guardar el archivo en %q: %w", filePath, err)
+	}
+
+	return &ExportResult{FilePath: filePath}, nil
+}
+
+func (a *App) ExportCabinetsExcel() (*ExportResult, error) {
+	rows, err := a.queryExportCabinetsRows()
+	if err != nil {
+		return nil, fmt.Errorf("no se pudo consultar control cabinets para exportar: %w", err)
+	}
+
+	if a.ctx == nil {
+		return nil, fmt.Errorf("contexto de app no disponible")
+	}
+
+	filePath, err := wruntime.SaveFileDialog(a.ctx, wruntime.SaveDialogOptions{
+		Title:           "Exportar Control Cabinets a Excel",
+		DefaultFilename: fmt.Sprintf("cabinets_%s.xlsx", time.Now().Format("20060102_150405")),
+		Filters: []wruntime.FileFilter{
+			{DisplayName: "Excel Workbook (*.xlsx)", Pattern: "*.xlsx"},
+		},
+	})
+	if err != nil {
+		return nil, err
+	}
+	if strings.TrimSpace(filePath) == "" {
+		return nil, nil
+	}
+
+	if err := ensureXLSXExtension(&filePath); err != nil {
+		return nil, fmt.Errorf("ruta de exportacion invalida: %w", err)
+	}
+
+	f, err := buildCabinetsWorkbook(rows)
+	if err != nil {
+		return nil, err
+	}
+	defer func() {
+		_ = f.Close()
+	}()
+	if err := f.SaveAs(filePath); err != nil {
+		return nil, fmt.Errorf("no se pudo guardar el archivo en %q: %w", filePath, err)
+	}
+
+	return &ExportResult{FilePath: filePath}, nil
+}
+
+func buildChequesWorkbook(cheques []exportChequeRow, devueltos []exportDevueltosRow) (*excelize.File, error) {
+	f := excelize.NewFile()
+
+	const sheetCheques = "Cheques"
+	defaultSheetName := f.GetSheetName(0)
+	if defaultSheetName != "" && defaultSheetName != sheetCheques {
+		if err := f.SetSheetName(defaultSheetName, sheetCheques); err != nil {
+			_ = f.Close()
+			return nil, fmt.Errorf("no se pudo renombrar hoja principal: %w", err)
+		}
+	}
+	if defaultSheetName == "" {
+		if _, err := f.NewSheet(sheetCheques); err != nil {
+			_ = f.Close()
+			return nil, fmt.Errorf("no se pudo crear hoja %q: %w", sheetCheques, err)
+		}
+	}
+
+	headersCheques := []string{"N Cheque", "RUT", "Nombre Cliente", "Banco", "N Factura", "Condiciones Pago", "Observaciones", "Monto", "F. Recepcion", "F. Deposito", "F. Cheque Cobrar", "Estado", "Vendedor"}
+	rowsCheques := make([][]interface{}, 0, len(cheques))
+	for _, r := range cheques {
+		rowsCheques = append(rowsCheques, []interface{}{
+			r.NumeroCheque,
+			r.RutCliente,
+			r.NombreCliente,
+			r.BancoCheque,
+			r.NumeroFactura,
+			r.CondicionesPago,
+			r.Observaciones,
+			r.Monto,
+			r.FechaRecepcion,
+			r.FechaDeposito,
+			r.FechaChequeCobrar,
+			r.Estado,
+			r.Vendedor,
+		})
+	}
+	if err := writeStyledSheet(f, sheetCheques, headersCheques, rowsCheques); err != nil {
+		_ = f.Close()
+		return nil, fmt.Errorf("no se pudo escribir hoja %q: %w", sheetCheques, err)
+	}
+
+	const sheetDevueltos = "Cheques Devueltos"
+	if _, err := f.NewSheet(sheetDevueltos); err != nil {
+		_ = f.Close()
+		return nil, fmt.Errorf("no se pudo crear hoja %q: %w", sheetDevueltos, err)
+	}
+
+	headersDevueltos := []string{"N Cheque", "RUT", "Nombre Cliente", "Plaza", "Monto", "F. Registro", "F. Cheque", "Tipo Pago", "Motivo", "F. Saldada", "Comentario", "Estado Pago"}
+	rowsDevueltos := make([][]interface{}, 0, len(devueltos))
+	for _, r := range devueltos {
+		rowsDevueltos = append(rowsDevueltos, []interface{}{
+			r.NumeroCheque,
+			r.RutCliente,
+			r.NombreCliente,
+			r.Plaza,
+			r.Monto,
+			r.FechaRegistro,
+			r.FechaCheque,
+			r.TipoPago,
+			r.Motivo,
+			r.FechaSaldada,
+			r.Comentario,
+			r.EstadoPago,
+		})
+	}
+	if err := writeStyledSheet(f, sheetDevueltos, headersDevueltos, rowsDevueltos); err != nil {
+		_ = f.Close()
+		return nil, fmt.Errorf("no se pudo escribir hoja %q: %w", sheetDevueltos, err)
+	}
+
+	f.SetActiveSheet(0)
+	return f, nil
+}
+
+func buildCabinetsWorkbook(rows []exportCabinetsRow) (*excelize.File, error) {
+	f := excelize.NewFile()
+
+	const sheetName = "Control Cabinets"
+	defaultSheetName := f.GetSheetName(0)
+	if defaultSheetName != "" && defaultSheetName != sheetName {
+		if err := f.SetSheetName(defaultSheetName, sheetName); err != nil {
+			_ = f.Close()
+			return nil, fmt.Errorf("no se pudo renombrar hoja principal: %w", err)
+		}
+	}
+	if defaultSheetName == "" {
+		if _, err := f.NewSheet(sheetName); err != nil {
+			_ = f.Close()
+			return nil, fmt.Errorf("no se pudo crear hoja %q: %w", sheetName, err)
+		}
+	}
+
+	headers := []string{"Codigo Movimiento", "Nombre Cliente", "Direccion", "Localidad", "Cantidad Cabinets", "Descripcion", "Fecha Entrada", "Fecha Salida", "Valor"}
+	data := make([][]interface{}, 0, len(rows))
+	for _, r := range rows {
+		data = append(data, []interface{}{
+			r.CodigoMovimiento,
+			r.NombreCliente,
+			r.Direccion,
+			r.Localidad,
+			r.CantidadCabinets,
+			r.Descripcion,
+			r.FechaEntrada,
+			r.FechaSalida,
+			r.Valor,
+		})
+	}
+	if err := writeStyledSheet(f, sheetName, headers, data); err != nil {
+		_ = f.Close()
+		return nil, fmt.Errorf("no se pudo escribir hoja %q: %w", sheetName, err)
+	}
+
+	f.SetActiveSheet(0)
+	return f, nil
+}
+
+func writeStyledSheet(f *excelize.File, sheet string, headers []string, rows [][]interface{}) error {
+	if len(headers) == 0 {
+		return nil
+	}
+
+	headerStyleID, err := f.NewStyle(&excelize.Style{
+		Font: &excelize.Font{
+			Bold:  true,
+			Color: "FFFFFF",
+		},
+		Fill: excelize.Fill{
+			Type:    "pattern",
+			Pattern: 1,
+			Color:   []string{"1F4E78"},
+		},
+		Alignment: &excelize.Alignment{
+			Horizontal: "center",
+			Vertical:   "center",
+		},
+	})
+	if err != nil {
+		return err
+	}
+
+	bodyStyleID, err := f.NewStyle(&excelize.Style{
+		Font: &excelize.Font{Color: "000000"},
+		Alignment: &excelize.Alignment{
+			Vertical: "center",
+		},
+	})
+	if err != nil {
+		return err
+	}
+
+	for col, header := range headers {
+		cell, err := excelize.CoordinatesToCellName(col+1, 1)
+		if err != nil {
+			return err
+		}
+		if err := f.SetCellValue(sheet, cell, header); err != nil {
+			return err
+		}
+	}
+
+	for r, row := range rows {
+		for c, value := range row {
+			cell, err := excelize.CoordinatesToCellName(c+1, r+2)
+			if err != nil {
+				return err
+			}
+			if err := f.SetCellValue(sheet, cell, value); err != nil {
+				return err
+			}
+		}
+	}
+
+	lastHeaderCell, err := excelize.CoordinatesToCellName(len(headers), 1)
+	if err != nil {
+		return err
+	}
+	if err := f.SetCellStyle(sheet, "A1", lastHeaderCell, headerStyleID); err != nil {
+		return err
+	}
+
+	bodyLastRow := len(rows) + 1
+	if bodyLastRow > 1 {
+		bodyLastCell, err := excelize.CoordinatesToCellName(len(headers), bodyLastRow)
+		if err != nil {
+			return err
+		}
+		if err := f.SetCellStyle(sheet, "A2", bodyLastCell, bodyStyleID); err != nil {
+			return err
+		}
+	}
+
+	for col := range headers {
+		columnName, err := excelize.ColumnNumberToName(col + 1)
+		if err != nil {
+			return err
+		}
+
+		maxLen := len(headers[col])
+		for _, row := range rows {
+			if col >= len(row) {
+				continue
+			}
+			text := fmt.Sprintf("%v", row[col])
+			if len(text) > maxLen {
+				maxLen = len(text)
+			}
+		}
+
+		width := float64(maxLen + 3)
+		if width < 14 {
+			width = 14
+		}
+		if width > 56 {
+			width = 56
+		}
+		if err := f.SetColWidth(sheet, columnName, columnName, width); err != nil {
+			return err
+		}
+	}
+
+	if err := f.SetRowHeight(sheet, 1, 24); err != nil {
+		return err
+	}
+
+	if err := f.SetPanes(sheet, &excelize.Panes{
+		Freeze:      true,
+		Split:       false,
+		XSplit:      0,
+		YSplit:      1,
+		TopLeftCell: "A2",
+		ActivePane:  "bottomLeft",
+		Selection: []excelize.Selection{{
+			SQRef:      "A2",
+			ActiveCell: "A2",
+			Pane:       "bottomLeft",
+		}},
+	}); err != nil {
+		return err
+	}
+
+	if bodyLastRow >= 1 {
+		lastCell, err := excelize.CoordinatesToCellName(len(headers), bodyLastRow)
+		if err != nil {
+			return err
+		}
+		rangeRef := "A1:" + lastCell
+		if err := f.AutoFilter(sheet, rangeRef, []excelize.AutoFilterOptions{}); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func ensureXLSXExtension(filePath *string) error {
+	if filePath == nil {
+		return fmt.Errorf("ruta de archivo invalida")
+	}
+	path := strings.TrimSpace(*filePath)
+	if path == "" {
+		return fmt.Errorf("ruta de archivo vacia")
+	}
+
+	if !strings.HasSuffix(strings.ToLower(path), ".xlsx") {
+		path += ".xlsx"
+	}
+
+	if strings.TrimSpace(path) == "" {
+		return fmt.Errorf("ruta de archivo invalida")
+	}
+
+	parentDir := filepath.Dir(path)
+	if parentDir != "" && parentDir != "." {
+		if _, err := os.Stat(parentDir); err != nil {
+			return fmt.Errorf("directorio destino invalido: %w", err)
+		}
+	}
+
+	*filePath = path
+	return nil
 }
 
 func (a *App) CrearCliente(rut, razonSocial string, idVendedor int, zona string) error {

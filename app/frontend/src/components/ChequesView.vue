@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import { ref, shallowRef, onMounted, computed, inject, watch } from 'vue'
-import { GetCheques, GetEstados, GetClientes, UpdateEstadoCheque, SoftDeleteCheque, ExportCheques, CrearCheque, UpdateCheque, ResolveOrCreateCliente } from '../../wailsjs/go/main/App'
+import { GetCheques, GetEstados, GetClientes, UpdateEstadoCheque, SoftDeleteCheque, ExportChequesExcel, CrearCheque, UpdateCheque, ResolveOrCreateCliente } from '../../wailsjs/go/main/App'
 import { refreshBusKey } from '../sync/refreshBus'
 
 const cheques = shallowRef<any[]>([])
@@ -115,38 +115,25 @@ function estadoBadge(nombre: string | null) {
   return 'badge-info'
 }
 
-async function exportToCSV() {
+async function exportToExcel() {
+  exporting.value = true
   try {
-    const rows = await ExportCheques()
-    if (!rows || rows.length === 0) return
-    const headers = ['N Cheque', 'RUT', 'Cliente', 'Banco', 'N Factura', 'Condiciones Pago', 'Observaciones', 'Monto', 'F. Recepcion', 'F. Deposito', 'F. Cheque Cobrar', 'Estado', 'Vendedor']
-    let csv = '\uFEFF' + headers.join(';') + '\n'
-    for (const r of rows) {
-      csv += [
-        r.numero_cheque,
-        r.rut_cliente,
-        r.nombre_cliente,
-        r.banco_cheque,
-        r.numero_factura,
-        r.condiciones_pago,
-        r.observaciones,
-        r.monto,
-        r.fecha_recepcion,
-        r.fecha_deposito,
-        r.fecha_cheque_cobrar,
-        r.estado,
-        r.vendedor,
-      ].join(';') + '\n'
+    const result = await ExportChequesExcel()
+    if (!result) {
+      return
     }
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = 'cheques_export.csv'
-    a.click()
-    URL.revokeObjectURL(url)
-  } catch (e) {
+    if (result?.file_path) {
+      window.alert(`Archivo exportado: ${result.file_path}`)
+    }
+  } catch (e: any) {
+    const msg = typeof e === 'string' ? e : String(e?.message || e || '')
+    if (msg.toLowerCase().includes('cancelada')) {
+      return
+    }
+    window.alert(msg || 'Error al exportar archivo Excel')
     console.error(e)
+  } finally {
+    exporting.value = false
   }
 }
 
@@ -168,6 +155,7 @@ const clienteInfo = ref<any>(null)
 const rutSuggestions = shallowRef<any[]>([])
 const showSuggestions = ref(false)
 const saving = ref(false)
+const exporting = ref(false)
 const formError = ref('')
 const formSuccess = ref(false)
 
@@ -380,9 +368,9 @@ if (refreshBus) {
           <option value="">Todos los estados</option>
           <option v-for="e in estados" :key="e.id" :value="String(e.id)">{{ e.nombre }}</option>
         </select>
-        <button class="btn btn-outline" @click="exportToCSV">
+        <button class="btn btn-outline" @click="exportToExcel" :disabled="exporting">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-          Exportar
+          {{ exporting ? 'Exportando...' : 'Exportar Excel' }}
         </button>
         <button class="btn btn-primary" @click="openModal">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>

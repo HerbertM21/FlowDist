@@ -99,6 +99,72 @@ CREATE TABLE IF NOT EXISTS cheques_devueltos (
     deleted_at TIMESTAMP WITH TIME ZONE
 );
 
+CREATE TABLE IF NOT EXISTS movimientos_cabinets (
+    id SERIAL,
+    nombre_cliente VARCHAR(255) NOT NULL,
+    direccion VARCHAR(255),
+    localidad VARCHAR(120),
+    cantidad_cabinets INTEGER NOT NULL DEFAULT 1,
+    descripcion TEXT,
+    codigo_movimiento VARCHAR(120) PRIMARY KEY,
+    fecha_entrada DATE,
+    fecha_salida DATE,
+    valor INTEGER NOT NULL DEFAULT 1 CHECK (valor = 1),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    deleted_at TIMESTAMP WITH TIME ZONE
+);
+
+ALTER TABLE movimientos_cabinets ADD COLUMN IF NOT EXISTS nombre_cliente VARCHAR(255);
+ALTER TABLE movimientos_cabinets ADD COLUMN IF NOT EXISTS direccion VARCHAR(255);
+ALTER TABLE movimientos_cabinets ADD COLUMN IF NOT EXISTS localidad VARCHAR(120);
+ALTER TABLE movimientos_cabinets ADD COLUMN IF NOT EXISTS cantidad_cabinets INTEGER DEFAULT 1;
+ALTER TABLE movimientos_cabinets ADD COLUMN IF NOT EXISTS descripcion TEXT;
+ALTER TABLE movimientos_cabinets ADD COLUMN IF NOT EXISTS codigo_movimiento VARCHAR(120);
+ALTER TABLE movimientos_cabinets ADD COLUMN IF NOT EXISTS fecha_entrada DATE;
+ALTER TABLE movimientos_cabinets ADD COLUMN IF NOT EXISTS fecha_salida DATE;
+ALTER TABLE movimientos_cabinets ADD COLUMN IF NOT EXISTS valor INTEGER DEFAULT 1;
+ALTER TABLE movimientos_cabinets ADD COLUMN IF NOT EXISTS created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP;
+ALTER TABLE movimientos_cabinets ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP;
+ALTER TABLE movimientos_cabinets ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMP WITH TIME ZONE;
+
+DO $$
+BEGIN
+    IF EXISTS (
+        SELECT 1
+        FROM information_schema.columns
+        WHERE table_schema = 'public'
+          AND table_name = 'movimientos_cabinets'
+          AND column_name = 'id'
+    ) THEN
+        IF EXISTS (
+            SELECT 1
+            FROM information_schema.table_constraints tc
+            WHERE tc.table_schema = 'public'
+              AND tc.table_name = 'movimientos_cabinets'
+              AND tc.constraint_type = 'PRIMARY KEY'
+              AND tc.constraint_name = 'movimientos_cabinets_pkey'
+        ) THEN
+            ALTER TABLE movimientos_cabinets DROP CONSTRAINT movimientos_cabinets_pkey;
+        END IF;
+
+        ALTER TABLE movimientos_cabinets
+            ADD CONSTRAINT movimientos_cabinets_pkey PRIMARY KEY (codigo_movimiento);
+    END IF;
+END $$;
+
+ALTER TABLE movimientos_cabinets
+    ALTER COLUMN nombre_cliente SET NOT NULL,
+    ALTER COLUMN codigo_movimiento SET NOT NULL,
+    ALTER COLUMN cantidad_cabinets SET NOT NULL,
+    ALTER COLUMN cantidad_cabinets SET DEFAULT 1,
+    ALTER COLUMN valor SET NOT NULL,
+    ALTER COLUMN valor SET DEFAULT 1;
+
+UPDATE movimientos_cabinets
+SET valor = 1
+WHERE valor IS DISTINCT FROM 1;
+
 ALTER TABLE cheques_devueltos ADD COLUMN IF NOT EXISTS id_cheque INTEGER;
 ALTER TABLE cheques_devueltos ADD COLUMN IF NOT EXISTS rut_cliente VARCHAR(15);
 ALTER TABLE cheques_devueltos ADD COLUMN IF NOT EXISTS numero_cheque VARCHAR(50);
@@ -267,6 +333,13 @@ AFTER INSERT OR UPDATE OR DELETE ON cheques_devueltos
 FOR EACH ROW
 EXECUTE FUNCTION notify_cheques_change();
 
+DROP TRIGGER IF EXISTS trg_cabinets_changed ON movimientos_cabinets;
+
+CREATE TRIGGER trg_cabinets_changed
+AFTER INSERT OR UPDATE OR DELETE ON movimientos_cabinets
+FOR EACH ROW
+EXECUTE FUNCTION notify_cheques_change();
+
 -- Indexes for performance optimization
 CREATE INDEX IF NOT EXISTS idx_cheques_rut_cliente ON cheques(rut_cliente);
 CREATE INDEX IF NOT EXISTS idx_cheques_id_estado ON cheques(id_estado);
@@ -277,3 +350,6 @@ CREATE INDEX IF NOT EXISTS idx_cheques_devueltos_deleted_at ON cheques_devueltos
 CREATE INDEX IF NOT EXISTS idx_cheques_devueltos_fecha_saldada ON cheques_devueltos(fecha_saldada);
 CREATE INDEX IF NOT EXISTS idx_cheques_devueltos_fecha_registro ON cheques_devueltos(fecha_registro);
 CREATE INDEX IF NOT EXISTS idx_cheques_devueltos_fecha_cheque ON cheques_devueltos(fecha_cheque);
+CREATE INDEX IF NOT EXISTS idx_movimientos_cabinets_nombre_cliente ON movimientos_cabinets(nombre_cliente);
+CREATE INDEX IF NOT EXISTS idx_movimientos_cabinets_fecha_entrada ON movimientos_cabinets(fecha_entrada);
+CREATE INDEX IF NOT EXISTS idx_movimientos_cabinets_deleted_at ON movimientos_cabinets(deleted_at);

@@ -8,7 +8,11 @@ export function CrearChequeDevuelto(arg1:main.ChequeDevueltoInput):Promise<void>
 
 export function CrearCliente(arg1:string,arg2:string,arg3:number,arg4:string):Promise<void>;
 
-export function ExportCheques():Promise<Array<main.ExportRow>>;
+export function CrearMovimientoCabinet(arg1:main.MovimientoCabinetInput):Promise<void>;
+
+export function ExportCabinetsExcel():Promise<main.ExportResult>;
+
+export function ExportChequesExcel():Promise<main.ExportResult>;
 
 export function GetCheques():Promise<Array<main.Cheque>>;
 
@@ -22,6 +26,8 @@ export function GetEstados():Promise<Array<main.EstadoCheque>>;
 
 export function GetMorosos():Promise<Array<main.ClienteMoroso>>;
 
+export function GetMovimientosCabinets():Promise<Array<main.MovimientoCabinet>>;
+
 export function GetServerTime():Promise<string>;
 
 export function GetVendedores():Promise<Array<main.Vendedor>>;
@@ -32,8 +38,12 @@ export function SoftDeleteCheque(arg1:number):Promise<void>;
 
 export function SoftDeleteChequeDevuelto(arg1:number):Promise<void>;
 
+export function SoftDeleteMovimientoCabinet(arg1:string):Promise<void>;
+
 export function UpdateCheque(arg1:number,arg2:main.ChequeInput):Promise<void>;
 
 export function UpdateChequeDevuelto(arg1:number,arg2:main.ChequeDevueltoInput):Promise<void>;
 
 export function UpdateEstadoCheque(arg1:number,arg2:number):Promise<void>;
+
+export function UpdateMovimientoCabinet(arg1:string,arg2:main.MovimientoCabinetInput):Promise<void>;

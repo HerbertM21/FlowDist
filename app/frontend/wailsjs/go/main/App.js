@@ -14,8 +14,16 @@ export function CrearCliente(arg1, arg2, arg3, arg4) {
   return window['go']['main']['App']['CrearCliente'](arg1, arg2, arg3, arg4);
 }
 
-export function ExportCheques() {
-  return window['go']['main']['App']['ExportCheques']();
+export function CrearMovimientoCabinet(arg1) {
+  return window['go']['main']['App']['CrearMovimientoCabinet'](arg1);
+}
+
+export function ExportCabinetsExcel() {
+  return window['go']['main']['App']['ExportCabinetsExcel']();
+}
+
+export function ExportChequesExcel() {
+  return window['go']['main']['App']['ExportChequesExcel']();
 }
 
 export function GetCheques() {
@@ -42,6 +50,10 @@ export function GetMorosos() {
   return window['go']['main']['App']['GetMorosos']();
 }
 
+export function GetMovimientosCabinets() {
+  return window['go']['main']['App']['GetMovimientosCabinets']();
+}
+
 export function GetServerTime() {
   return window['go']['main']['App']['GetServerTime']();
 }
@@ -62,6 +74,10 @@ export function SoftDeleteChequeDevuelto(arg1) {
   return window['go']['main']['App']['SoftDeleteChequeDevuelto'](arg1);
 }
 
+export function SoftDeleteMovimientoCabinet(arg1) {
+  return window['go']['main']['App']['SoftDeleteMovimientoCabinet'](arg1);
+}
+
 export function UpdateCheque(arg1, arg2) {
   return window['go']['main']['App']['UpdateCheque'](arg1, arg2);
 }
@@ -72,4 +88,8 @@ export function UpdateChequeDevuelto(arg1, arg2) {
 
 export function UpdateEstadoCheque(arg1, arg2) {
   return window['go']['main']['App']['UpdateEstadoCheque'](arg1, arg2);
+}
+
+export function UpdateMovimientoCabinet(arg1, arg2) {
+  return window['go']['main']['App']['UpdateMovimientoCabinet'](arg1, arg2);
 }

@@ -4,6 +4,7 @@ import { GetCheques, GetChequesDevueltos } from '../wailsjs/go/main/App'
 import { EventsOn } from '../wailsjs/runtime/runtime'
 import ChequesView from './components/ChequesView.vue'
 import ChequesDevueltosView from './components/ChequesDevueltosView.vue'
+import CabinetsView from './components/CabinetsView.vue'
 import { refreshBusKey } from './sync/refreshBus'
 
 const activeView = ref('home')
@@ -56,6 +57,7 @@ const navItems = [
   { id: 'home', label: 'Inicio', icon: 'home' },
   { id: 'cheques', label: 'Cheques', icon: 'file-text' },
   { id: 'devueltos', label: 'Cheques devueltos', icon: 'alert-triangle' },
+  { id: 'cabinets', label: 'Control Cabinets', icon: 'archive' },
 ]
 
 let disposeDBUpdated: (() => void) | null = null
@@ -64,7 +66,7 @@ onMounted(() => {
   loadStats()
 
   disposeDBUpdated = EventsOn('db-updated', (payload?: DBUpdatedPayload) => {
-    if (payload?.table && payload.table !== 'cheques' && payload.table !== 'cheques_devueltos') return
+    if (payload?.table && payload.table !== 'cheques' && payload.table !== 'cheques_devueltos' && payload.table !== 'movimientos_cabinets') return
 
     notifyRefresh()
 
@@ -106,6 +108,7 @@ onBeforeUnmount(() => {
           <svg v-if="item.icon === 'home'" class="nav-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
           <svg v-else-if="item.icon === 'file-text'" class="nav-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
           <svg v-else-if="item.icon === 'alert-triangle'" class="nav-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+          <svg v-else-if="item.icon === 'archive'" class="nav-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="4" rx="1"/><path d="M5 8h14v11a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V8Z"/><path d="M10 12h4"/></svg>
           <span>{{ item.label }}</span>
         </button>
       </nav>
@@ -190,6 +193,7 @@ onBeforeUnmount(() => {
 
         <ChequesView v-else-if="activeView === 'cheques'" key="cheques" />
         <ChequesDevueltosView v-else-if="activeView === 'devueltos'" key="devueltos" />
+        <CabinetsView v-else-if="activeView === 'cabinets'" key="cabinets" />
       </Transition>
     </main>
   </div>
