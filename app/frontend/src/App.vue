@@ -1,15 +1,18 @@
 <script lang="ts" setup>
-import { ref, provide, onMounted, onBeforeUnmount } from 'vue'
+import { ref, computed, provide, onMounted, onBeforeUnmount } from 'vue'
 import { GetCheques, GetChequesDevueltos } from '../wailsjs/go/main/App'
 import { EventsOn } from '../wailsjs/runtime/runtime'
 import ChequesView from './components/ChequesView.vue'
 import ChequesDevueltosView from './components/ChequesDevueltosView.vue'
 import CabinetsView from './components/CabinetsView.vue'
 import { refreshBusKey } from './sync/refreshBus'
+import bannerNegro from './assets/images/banner_negro.png'
 
 const activeView = ref('home')
 const stats = ref({ cheques: 0, devueltos: 0, montoTotal: 0 })
 const refreshTick = ref(0)
+const chequesMenuOpen = ref(true)
+const isChequesSectionActive = computed(() => activeView.value === 'cheques' || activeView.value === 'devueltos')
 
 type DBUpdatedPayload = {
   source: 'listen-notify' | 'fallback-poll'
@@ -50,15 +53,15 @@ function formatMoney(amount: number) {
 
 function navigateTo(view: string) {
   activeView.value = view
+  if (view === 'cheques' || view === 'devueltos') {
+    chequesMenuOpen.value = true
+  }
   if (view === 'home') loadStats()
 }
 
-const navItems = [
-  { id: 'home', label: 'Inicio', icon: 'home' },
-  { id: 'cheques', label: 'Cheques', icon: 'file-text' },
-  { id: 'devueltos', label: 'Cheques devueltos', icon: 'alert-triangle' },
-  { id: 'cabinets', label: 'Control Cabinets', icon: 'archive' },
-]
+function toggleChequesMenu() {
+  chequesMenuOpen.value = !chequesMenuOpen.value
+}
 
 let disposeDBUpdated: (() => void) | null = null
 
@@ -88,35 +91,57 @@ onBeforeUnmount(() => {
   <div class="app-shell">
     <aside class="sidebar">
       <div class="sidebar-brand" style="--wails-draggable: drag;">
-        <div class="brand-mark">
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
-        </div>
-        <div class="brand-text">
-          <span class="brand-name">Distribuidora</span>
-          <span class="brand-sub">Gestión Financiera</span>
-        </div>
+        <img :src="bannerNegro" alt="FlowDist" class="brand-logo" draggable="false" />
       </div>
 
       <nav class="sidebar-nav">
-        <span class="nav-section-label">Menu</span>
+        <span class="nav-section-label">Menú</span>
         <button
-          v-for="item in navItems"
-          :key="item.id"
-          :class="['nav-item', { active: activeView === item.id }]"
-          @click="navigateTo(item.id)"
+          :class="['nav-item', { active: activeView === 'home' }]"
+          @click="navigateTo('home')"
         >
-          <svg v-if="item.icon === 'home'" class="nav-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
-          <svg v-else-if="item.icon === 'file-text'" class="nav-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
-          <svg v-else-if="item.icon === 'alert-triangle'" class="nav-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-          <svg v-else-if="item.icon === 'archive'" class="nav-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="4" rx="1"/><path d="M5 8h14v11a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V8Z"/><path d="M10 12h4"/></svg>
-          <span>{{ item.label }}</span>
+          <svg class="nav-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+          <span class="nav-item-text">Inicio</span>
+        </button>
+
+        <div :class="['nav-group', { active: isChequesSectionActive }]">
+          <button
+            :class="['nav-item', 'nav-parent', { active: isChequesSectionActive }]"
+            @click="toggleChequesMenu"
+          >
+            <svg class="nav-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+            <span class="nav-item-text">Cheques</span>
+            <svg :class="['nav-caret', { open: chequesMenuOpen }]" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+          </button>
+
+          <Transition name="nav-collapse">
+            <div v-if="chequesMenuOpen" class="nav-submenu">
+              <button
+                :class="['nav-subitem', { active: activeView === 'cheques' }]"
+                @click="navigateTo('cheques')"
+              >
+                <span class="nav-subdot"></span>
+                <span>Cheques</span>
+              </button>
+              <button
+                :class="['nav-subitem', { active: activeView === 'devueltos' }]"
+                @click="navigateTo('devueltos')"
+              >
+                <span class="nav-subdot"></span>
+                <span>Protestados</span>
+              </button>
+            </div>
+          </Transition>
+        </div>
+
+        <button
+          :class="['nav-item', { active: activeView === 'cabinets' }]"
+          @click="navigateTo('cabinets')"
+        >
+          <svg class="nav-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="4" rx="1"/><path d="M5 8h14v11a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V8Z"/><path d="M10 12h4"/></svg>
+          <span class="nav-item-text">Control Cabinets</span>
         </button>
       </nav>
-
-      <div class="sidebar-footer" style="--wails-draggable: drag;">
-        <div class="sidebar-footer-dot"></div>
-        <span>PostgreSQL activo</span>
-      </div>
     </aside>
 
     <main class="main-area">
@@ -216,35 +241,13 @@ onBeforeUnmount(() => {
   border-right: 1px solid rgba(255,255,255,0.04);
 }
 .sidebar-brand {
-  display: flex;
-  align-items: center;
-  gap: 11px;
-  padding: 22px 20px 20px;
+  padding: 16px 12px 14px;
 }
-.brand-mark {
-  width: 38px;
-  height: 38px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: rgba(13, 201, 214, 0.1);
-  border-radius: var(--radius-md);
-  border: 1px solid rgba(13, 201, 214, 0.15);
-}
-.brand-text {
-  display: flex;
-  flex-direction: column;
-}
-.brand-name {
-  font-size: 14.5px;
-  font-weight: 700;
-  color: var(--text-white);
-  letter-spacing: -0.02em;
-}
-.brand-sub {
-  font-size: 10.5px;
-  color: var(--text-sidebar);
-  letter-spacing: 0.02em;
+.brand-logo {
+  width: 100%;
+  height: auto;
+  display: block;
+  user-select: none;
 }
 
 .sidebar-nav {
@@ -267,6 +270,7 @@ onBeforeUnmount(() => {
   display: flex;
   align-items: center;
   gap: 10px;
+  width: 100%;
   padding: 9px 12px;
   border-radius: var(--radius-sm);
   font-size: 13.5px;
@@ -284,24 +288,84 @@ onBeforeUnmount(() => {
   color: var(--text-sidebar-active);
   background: var(--bg-sidebar-active);
 }
-.nav-item.active .nav-icon { color: var(--text-sidebar-active); }
-.nav-icon { flex-shrink: 0; }
+.nav-item.active .nav-icon,
+.nav-item.active .nav-caret {
+  color: var(--text-sidebar-active);
+}
+.nav-item-text {
+  flex: 1;
+}
+.nav-icon {
+  flex-shrink: 0;
+}
 
-.sidebar-footer {
-  padding: 16px 20px;
-  border-top: 1px solid rgba(255,255,255,0.06);
+.nav-group {
+  border-radius: 12px;
+}
+.nav-caret {
+  margin-left: auto;
+  opacity: 0.9;
+  transform: rotate(-90deg);
+  transition: transform var(--transition-slow);
+}
+.nav-caret.open {
+  transform: rotate(0deg);
+}
+
+.nav-submenu {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 0 0 4px 32px;
+}
+.nav-subitem {
+  width: 100%;
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 11px;
+  text-align: left;
+  font-size: 12.6px;
   color: var(--text-sidebar);
+  padding: 7px 10px;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  transition: all var(--transition);
 }
-.sidebar-footer-dot {
-  width: 7px;
-  height: 7px;
-  background: var(--success);
+.nav-subitem:hover {
+  color: var(--text-white);
+  background: var(--bg-sidebar-hover);
+}
+.nav-subitem.active {
+  color: var(--text-sidebar-active);
+  background: var(--bg-sidebar-active);
+}
+.nav-subdot {
+  width: 6px;
+  height: 6px;
   border-radius: 50%;
-  box-shadow: 0 0 6px rgba(34, 197, 94, 0.5);
+  background: var(--text-sidebar);
+}
+.nav-subitem.active .nav-subdot {
+  background: var(--text-sidebar-active);
+}
+
+.nav-collapse-enter-active,
+.nav-collapse-leave-active {
+  transition: max-height 180ms ease, opacity 140ms ease, transform 180ms ease;
+  transform-origin: top;
+  overflow: hidden;
+}
+.nav-collapse-enter-from,
+.nav-collapse-leave-to {
+  max-height: 0;
+  opacity: 0;
+  transform: translateY(-4px);
+}
+.nav-collapse-enter-to,
+.nav-collapse-leave-from {
+  max-height: 120px;
+  opacity: 1;
+  transform: translateY(0);
 }
 
 .main-area {
