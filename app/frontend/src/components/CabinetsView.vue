@@ -208,6 +208,12 @@ if (refreshBus) {
 
 <template>
   <div class="cabinets-view">
+    <div class="search-filter-row">
+      <div class="search-wrapper">
+        <svg class="search-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+        <input v-model="searchQuery" type="text" placeholder="Buscar por nombre cliente..." class="search-input" />
+      </div>
+    </div>
     <header class="view-header">
       <div class="view-header-left">
         <h2 class="view-title">Control Cabinets</h2>
@@ -216,10 +222,6 @@ if (refreshBus) {
         </div>
       </div>
       <div class="view-header-right">
-        <div class="search-wrapper">
-          <svg class="search-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-          <input v-model="searchQuery" type="text" placeholder="Buscar por nombre cliente..." class="search-input" />
-        </div>
         <button class="btn btn-outline" @click="exportToExcel" :disabled="exporting">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
           {{ exporting ? 'Exportando...' : 'Exportar Excel' }}
@@ -230,8 +232,13 @@ if (refreshBus) {
 
     <div class="resumen-grid">
       <article class="resumen-card">
-        <span class="resumen-label">Total de maquinas movidas (mes actual)</span>
-        <strong class="resumen-valor">{{ totalMaquinasMes }}</strong>
+        <div class="resumen-content">
+          <span class="resumen-label">Total de maquinas movidas (mes actual)</span>
+          <strong class="resumen-valor">{{ totalMaquinasMes }}</strong>
+        </div>
+        <div class="resumen-icon icon-primary">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
+        </div>
       </article>
     </div>
 
@@ -354,9 +361,10 @@ if (refreshBus) {
 .meta-count { font-size: 12px; color: var(--text-muted); background: var(--bg-surface); padding: 3px 10px; border-radius: 12px; font-weight: 500; }
 .view-header-right { display: flex; align-items: center; gap: 8px; }
 
-.search-wrapper { position: relative; }
+.search-filter-row { display: flex; width: 100%; }
+.search-wrapper { position: relative; flex: 1; }
 .search-icon { position: absolute; left: 11px; top: 50%; transform: translateY(-50%); color: var(--text-muted); pointer-events: none; }
-.search-input { padding-left: 32px; width: 240px; }
+.search-input { padding-left: 32px; width: 100%; }
 
 .resumen-grid {
   display: grid;
@@ -368,11 +376,30 @@ if (refreshBus) {
   background: var(--bg-white);
   border: 1px solid var(--border-light);
   border-radius: var(--radius-md);
-  padding: 14px 16px;
+  padding: 16px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  box-shadow: var(--shadow-xs);
+}
+.resumen-content {
   display: flex;
   flex-direction: column;
   gap: 4px;
 }
+.resumen-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.icon-primary { background: var(--primary-light); color: var(--primary-dark); }
+.icon-success { background: #dcfce7; color: #16a34a; }
+.icon-warning { background: #fef08a; color: #ca8a04; }
+.icon-danger { background: #fee2e2; color: #dc2626; }
 
 .resumen-label {
   font-size: 12px;

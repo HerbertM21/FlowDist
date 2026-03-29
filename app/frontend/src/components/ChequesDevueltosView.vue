@@ -253,6 +253,17 @@ if (refreshBus) {
 
 <template>
   <div class="devueltos-view">
+    <div class="search-filter-row">
+      <div class="search-wrapper">
+        <svg class="search-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+        <input v-model="searchQuery" type="text" placeholder="Buscar..." class="search-input" />
+      </div>
+      <select v-model="filterEstado" class="filter-select">
+        <option value="">Todos</option>
+        <option value="Pendiente">Pendiente</option>
+        <option value="Pagado">Pagado</option>
+      </select>
+    </div>
     <header class="view-header">
       <div class="view-header-left">
         <h2 class="view-title">Cheques Devueltos</h2>
@@ -263,15 +274,6 @@ if (refreshBus) {
         </div>
       </div>
       <div class="view-header-right">
-        <div class="search-wrapper">
-          <svg class="search-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-          <input v-model="searchQuery" type="text" placeholder="Buscar..." class="search-input" />
-        </div>
-        <select v-model="filterEstado" class="filter-select">
-          <option value="">Todos</option>
-          <option value="Pendiente">Pendiente</option>
-          <option value="Pagado">Pagado</option>
-        </select>
         <button class="btn btn-primary" @click="openCreateModal">
           Nuevo Devuelto
         </button>
@@ -279,20 +281,35 @@ if (refreshBus) {
     </header>
 
     <div class="resumen-grid">
-      <article class="resumen-card protestados">
-        <span class="resumen-label">Cheques protestados</span>
-        <strong class="resumen-monto">{{ formatMoney(chequesProtestados.monto) }}</strong>
-        <span class="resumen-meta">{{ chequesProtestados.cantidad }} cheques protestados</span>
+      <article class="resumen-card">
+        <div class="resumen-content">
+          <span class="resumen-label">Cheques protestados</span>
+          <strong class="resumen-monto">{{ formatMoney(chequesProtestados.monto) }}</strong>
+          <span class="resumen-meta">{{ chequesProtestados.cantidad }} cheques protestados</span>
+        </div>
+        <div class="resumen-icon icon-danger">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+        </div>
       </article>
-      <article class="resumen-card pendientes">
-        <span class="resumen-label">Cheques pendientes</span>
-        <strong class="resumen-monto">{{ formatMoney(chequesPendientes.monto) }}</strong>
-        <span class="resumen-meta">{{ chequesPendientes.cantidad }} cheques pendientes</span>
+      <article class="resumen-card">
+        <div class="resumen-content">
+          <span class="resumen-label">Cheques pendientes</span>
+          <strong class="resumen-monto">{{ formatMoney(chequesPendientes.monto) }}</strong>
+          <span class="resumen-meta">{{ chequesPendientes.cantidad }} cheques pendientes</span>
+        </div>
+        <div class="resumen-icon icon-warning">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        </div>
       </article>
-      <article class="resumen-card pagados">
-        <span class="resumen-label">Cheques pagados</span>
-        <strong class="resumen-monto">{{ formatMoney(chequesPagados.monto) }}</strong>
-        <span class="resumen-meta">{{ chequesPagados.cantidad }} cheques pagados</span>
+      <article class="resumen-card">
+        <div class="resumen-content">
+          <span class="resumen-label">Cheques pagados</span>
+          <strong class="resumen-monto">{{ formatMoney(chequesPagados.monto) }}</strong>
+          <span class="resumen-meta">{{ chequesPagados.cantidad }} cheques pagados</span>
+        </div>
+        <div class="resumen-icon icon-success">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+        </div>
       </article>
     </div>
 
@@ -445,10 +462,11 @@ if (refreshBus) {
 .meta-total { font-size: 13px; color: var(--primary-dark); font-weight: 600; font-family: var(--font-mono); }
 .view-header-right { display: flex; align-items: center; gap: 8px; }
 
-.search-wrapper { position: relative; }
+.search-filter-row { display: flex; gap: 16px; width: 100%; }
+.search-wrapper { position: relative; flex: 1; }
 .search-icon { position: absolute; left: 11px; top: 50%; transform: translateY(-50%); color: var(--text-muted); pointer-events: none; }
-.search-input { padding-left: 32px; width: 210px; }
-.filter-select { min-width: 140px; }
+.search-input { padding-left: 32px; width: 100%; }
+.filter-select { flex: 0 0 250px; }
 
 .resumen-grid {
   display: grid;
@@ -460,26 +478,30 @@ if (refreshBus) {
   background: var(--bg-white);
   border: 1px solid var(--border-light);
   border-radius: var(--radius-md);
-  padding: 14px 16px;
+  padding: 16px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  box-shadow: var(--shadow-xs);
+}
+.resumen-content {
   display: flex;
   flex-direction: column;
   gap: 4px;
 }
-
-.resumen-card.protestados {
-  border-color: var(--danger-border);
-  background: var(--danger-bg);
+.resumen-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
 }
-
-.resumen-card.pendientes {
-  border-color: var(--warning-border);
-  background: var(--warning-bg);
-}
-
-.resumen-card.pagados {
-  border-color: var(--success-border);
-  background: var(--success-bg);
-}
+.icon-primary { background: var(--primary-light); color: var(--primary-dark); }
+.icon-success { background: #dcfce7; color: #16a34a; }
+.icon-warning { background: #fef08a; color: #ca8a04; }
+.icon-danger { background: #fee2e2; color: #dc2626; }
 
 .resumen-label {
   font-size: 12px;

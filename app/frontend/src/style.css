@@ -26,20 +26,18 @@
   --text-sidebar-active: #0dc9d6;
 
   --border: #e4e7ed;
-  --border-light: #eef0f4;
-  --border-hover: #d0d5de;
-
-  --success: #22c55e;
-  --success-bg: #f0fdf4;
-  --success-border: #bbf7d0;
-  --warning: #f59e0b;
-  --warning-bg: #fffbeb;
-  --warning-border: #fde68a;
-  --danger: #ef4444;
-  --danger-bg: #fef2f2;
-  --danger-border: #fecaca;
-  --info-bg: var(--primary-light);
-  --info-border: #b2eff3;
+  --success: #01584d;
+  --success-bg: #80f2d6;
+  --success-border: transparent;
+  --warning: #854d0e;
+  --warning-bg: #fef08a;
+  --warning-border: transparent;
+  --danger: #8b0000;
+  --danger-bg: #ffdad7;
+  --danger-border: transparent;
+  --info-text: #0e1934;
+  --info-bg: #dbe4f3;
+  --info-border: transparent;
 
   --radius-sm: 8px;
   --radius-md: 12px;
@@ -194,31 +192,27 @@ select {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  padding: 3px 10px;
+  padding: 2px 8px;
   border-radius: 20px;
-  font-size: 11.5px;
+  font-size: 11px;
   font-weight: 600;
-  letter-spacing: 0.02em;
+  letter-spacing: 0.01em;
 }
 .badge-success {
   background: var(--success-bg);
   color: var(--success);
-  border: 1px solid var(--success-border);
 }
 .badge-warning {
   background: var(--warning-bg);
   color: var(--warning);
-  border: 1px solid var(--warning-border);
 }
 .badge-danger {
   background: var(--danger-bg);
   color: var(--danger);
-  border: 1px solid var(--danger-border);
 }
 .badge-info {
   background: var(--info-bg);
-  color: var(--primary-dark);
-  border: 1px solid var(--info-border);
+  color: var(--info-text);
 }
 
 .card {

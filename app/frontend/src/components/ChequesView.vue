@@ -350,6 +350,16 @@ if (refreshBus) {
 
 <template>
   <div class="cheques-view">
+    <div class="search-filter-row">
+      <div class="search-wrapper">
+        <svg class="search-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+        <input v-model="searchQuery" type="text" placeholder="Buscar..." class="search-input" />
+      </div>
+      <select v-model="filterEstado" class="filter-select">
+        <option value="">Todos los estados</option>
+        <option v-for="e in estados" :key="e.id" :value="String(e.id)">{{ e.nombre }}</option>
+      </select>
+    </div>
     <header class="view-header">
       <div class="view-header-left">
         <h2 class="view-title">Cheques</h2>
@@ -360,14 +370,6 @@ if (refreshBus) {
         </div>
       </div>
       <div class="view-header-right">
-        <div class="search-wrapper">
-          <svg class="search-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-          <input v-model="searchQuery" type="text" placeholder="Buscar..." class="search-input" />
-        </div>
-        <select v-model="filterEstado" class="filter-select">
-          <option value="">Todos los estados</option>
-          <option v-for="e in estados" :key="e.id" :value="String(e.id)">{{ e.nombre }}</option>
-        </select>
         <button class="btn btn-outline" @click="exportToExcel" :disabled="exporting">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
           {{ exporting ? 'Exportando...' : 'Exportar Excel' }}
@@ -381,14 +383,24 @@ if (refreshBus) {
 
     <div class="resumen-grid">
       <article class="resumen-card">
-        <span class="resumen-label">Total cartera</span>
-        <strong class="resumen-monto">{{ formatMoney(totalCartera.monto) }}</strong>
-        <span class="resumen-meta">{{ totalCartera.cantidad }} cheques</span>
+        <div class="resumen-content">
+          <span class="resumen-label">Total cartera</span>
+          <strong class="resumen-monto">{{ formatMoney(totalCartera.monto) }}</strong>
+          <span class="resumen-meta">{{ totalCartera.cantidad }} cheques</span>
+        </div>
+        <div class="resumen-icon icon-info">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
+        </div>
       </article>
-      <article class="resumen-card depositar">
-        <span class="resumen-label">Cheques por depositar</span>
-        <strong class="resumen-monto">{{ formatMoney(chequesPorDepositar.monto) }}</strong>
-        <span class="resumen-meta">{{ chequesPorDepositar.cantidad }} cheques</span>
+      <article class="resumen-card">
+        <div class="resumen-content">
+          <span class="resumen-label">Cheques por depositar</span>
+          <strong class="resumen-monto">{{ formatMoney(chequesPorDepositar.monto) }}</strong>
+          <span class="resumen-meta">{{ chequesPorDepositar.cantidad }} cheques</span>
+        </div>
+        <div class="resumen-icon icon-warning">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        </div>
       </article>
     </div>
 
@@ -617,10 +629,11 @@ if (refreshBus) {
 .meta-total { font-size: 13px; color: var(--primary-dark); font-weight: 600; font-family: var(--font-mono); }
 .view-header-right { display: flex; align-items: center; gap: 8px; }
 
-.search-wrapper { position: relative; }
+.search-filter-row { display: flex; gap: 16px; width: 100%; }
+.search-wrapper { position: relative; flex: 1; }
 .search-icon { position: absolute; left: 11px; top: 50%; transform: translateY(-50%); color: var(--text-muted); pointer-events: none; }
-.search-input { padding-left: 32px; width: 210px; }
-.filter-select { min-width: 150px; }
+.search-input { padding-left: 32px; width: 100%; }
+.filter-select { flex: 0 0 250px; }
 
 .resumen-grid {
   display: grid;
@@ -632,16 +645,31 @@ if (refreshBus) {
   background: var(--bg-white);
   border: 1px solid var(--border-light);
   border-radius: var(--radius-md);
-  padding: 14px 16px;
+  padding: 16px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  box-shadow: var(--shadow-xs);
+}
+.resumen-content {
   display: flex;
   flex-direction: column;
   gap: 4px;
 }
-
-.resumen-card.depositar {
-  border-color: var(--warning-border);
-  background: var(--warning-bg);
+.resumen-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
 }
+.icon-primary { background: var(--primary-light); color: var(--primary-dark); }
+.icon-info { background: var(--info-bg); color: var(--info-text); }
+.icon-success { background: #dcfce7; color: #16a34a; }
+.icon-warning { background: #fef08a; color: #ca8a04; }
+.icon-danger { background: #fee2e2; color: #dc2626; }
 
 .resumen-label {
   font-size: 12px;
@@ -717,8 +745,8 @@ if (refreshBus) {
 }
 
 .estado-pill {
-  padding: 4px 12px 4px 10px;
-  font-size: 11.5px;
+  padding: 2px 8px 2px 8px;
+  font-size: 11px;
   font-weight: 600;
   border-radius: 20px;
   border: none;
@@ -726,10 +754,10 @@ if (refreshBus) {
   appearance: none;
   background-repeat: no-repeat;
   background-position: right 6px center;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%235f6578' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
-  padding-right: 22px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%230e1934' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  padding-right: 20px;
 }
-.estado-pill.badge-info { background: var(--info-bg); color: var(--primary-dark); }
+.estado-pill.badge-info { background: var(--info-bg); color: var(--info-text); }
 .estado-pill.badge-success { background: var(--success-bg); color: var(--success); }
 .estado-pill.badge-danger { background: var(--danger-bg); color: var(--danger); }
 
